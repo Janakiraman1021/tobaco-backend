@@ -10,13 +10,21 @@ const dataEntrySchema = z.object({
   rollNumber: z.string().min(1, 'Roll number is required'),
   name: z.string().min(1, 'Name is required'),
   sampleId: z.number().positive('Sample ID must be a positive number'),
-  userType: z.enum(['Non-user', 'Regular User', 'Addict']),
   timeMins: z.number().min(0).max(60),
   phLevel: z.number().min(1).max(14),
-  conductivity: z.number().min(0),
   temperature: z.number(),
-  substanceDetected: z.string().min(1, 'Substance detected is required')
+  Nicotene: z.number().optional(),
+  substanceDetected: z.string().optional(),
+  userType: z.enum(['Non-user', 'Regular User', 'Addict']).optional()
 });
+
+// Function to determine user type
+const determineUserType = (phLevel, Nicotene) => {
+  if (phLevel > 7.5 && Nicotene > 150) return 'Addict';
+  if (phLevel >= 7 && phLevel <= 7.5 && Nicotene >= 130 && Nicotene <= 150) return 'Regular User';
+  if (phLevel >= 7.3 && phLevel <= 7.5 && Nicotene >= 120 && Nicotene <= 130) return 'Intermediate User';
+  return 'Non-user';
+};
 
 // Add a new sample entry (Public route)
 router.post("/entry", async (req, res) => {
@@ -25,10 +33,14 @@ router.post("/entry", async (req, res) => {
     const lastEntry = await DataEntry.findOne().sort({ sampleId: -1 });
     const nextSampleId = lastEntry ? lastEntry.sampleId + 1 : 1;
 
+    // Determine user type
+    const userType = determineUserType(req.body.phLevel, req.body.Nicotene);
+
     // Validate request body
     const validatedData = dataEntrySchema.parse({
       ...req.body,
-      sampleId: nextSampleId
+      sampleId: nextSampleId,
+      userType
     });
 
     // Create new entry
@@ -63,3 +75,10 @@ router.post("/entry", async (req, res) => {
 });
 
 module.exports = router;
+
+/**
+ * Classification Criteria:
+ * - Addict: pH level above 7.5 and nicotine level above 150.
+ * - Regular User: pH level between 7 - 7.5 and nicotine level between 130 - 150.
+ * - Intermediate User: pH level between 7.3 - 7.5 and nicotine level between 120 - 130.
+ */

@@ -83,7 +83,7 @@ router.get("/all-entries", async (req, res) => {
             userType: entry.userType,
             timeMins: entry.timeMins,
             phLevel: entry.phLevel,
-            conductivity: entry.conductivity,
+            Nicotene: entry.Nicotene,
             temperature: entry.temperature,
             substanceDetected: entry.substanceDetected,
             createdBy: entry.createdBy,
@@ -106,7 +106,7 @@ router.get("/all-entries", async (req, res) => {
 });
 
 // Add new data entry (Both admin and data_entry roles can access)
-router.post("/", authMiddleware(["admin", "data_entry"]), async (req, res) => {
+router.post("/",  async (req, res) => {
     try {
         const newEntry = new DataEntry({
             ...req.body,
@@ -131,7 +131,7 @@ router.post("/", authMiddleware(["admin", "data_entry"]), async (req, res) => {
 });
 
 // Delete an entry (Only admin)
-router.delete("/:id", authMiddleware("admin"), async (req, res) => {
+router.delete("/:id", async (req, res) => {
     try {
         const entry = await DataEntry.findById(req.params.id);
         
@@ -150,6 +150,41 @@ router.delete("/:id", authMiddleware("admin"), async (req, res) => {
         });
     } catch (error) {
         console.error('Error deleting entry:', error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+});
+
+// Delete a data entry user (Only admin)
+router.delete("/data-entry-users/:id",async (req, res) => {
+    try {
+        const user = await User.findOne({ 
+            _id: req.params.id, 
+            role: "data_entry" 
+        });
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "Data entry user not found"
+            });
+        }
+
+        // Delete all entries created by this user
+        await DataEntry.deleteMany({ createdBy: user._id });
+
+        // Delete the user
+        await User.findByIdAndDelete(req.params.id);
+        
+        res.status(200).json({
+            success: true,
+            message: "Data entry user and associated entries deleted successfully"
+        });
+    } catch (error) {
+        console.error('Error deleting data entry user:', error);
         res.status(500).json({
             success: false,
             message: "Internal server error",

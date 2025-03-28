@@ -101,9 +101,19 @@ router.post("/login", async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
     const token = jwt.sign({ id: user._id, role: user.role }, "secretKey", { expiresIn: "1h" });
-    res.json({ token, role: user.role });
+    res.json({ 
+      token, 
+      role: user.role,
+      userId: user._id,
+
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Login error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: "Error during login",
+      error: err.message 
+    });
   }
 });
 
